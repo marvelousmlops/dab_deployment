@@ -1,0 +1,51 @@
+bundle:
+  name: demo-dab
+
+artifacts:
+  default:
+    type: whl
+    build: poetry build
+    path: .
+
+variables:
+  root_path:
+    description: root_path for the target
+    default: /Shared/.bundle/${bundle.target}/${bundle.name}
+
+
+resources:
+  jobs:
+    demo-job:
+      name: demo-job
+      tasks:
+        - task_key: python-task
+          new_cluster:
+            spark_version: 13.3.x-scala2.12
+            node_type_id:  Standard_D4s_v5
+            num_workers: 1
+            spark_env_vars:
+              PYPI_TOKEN: "{{secrets/mlops/pypi_token}}"
+            init_scripts:
+              - volumes:
+                  destination: "/Volumes/mlops_test/mlops_volumes/init_scripts/extra_index_url.sh"
+          spark_python_task:
+            python_file: "main.py"
+            parameters:
+              - "--root_path"
+              - ${var.root_path}
+          libraries:
+            - whl: ./dist/*.whl
+#            - whl: /Workspace/${var.root_path}/files/extra_dist/becse_adp_adplogger-1.0.8-py3-none-any.whl
+            - pypi:
+                package: mlops-test==1.0.0
+                repo: <YOUR INDEX URL>
+
+sync:
+  exclude:
+    - extra_dist/*
+
+targets:
+  dev:
+    workspace:
+      host: <YOUR HOST> 
+      root_path: ${var.root_path}
